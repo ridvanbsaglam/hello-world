@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ro-Ro Commander: EV Crisis</title>
+  <style>
+    :root {
+      --bg1: #0c2238;
+      --bg2: #1f4f75;
+      --panel: rgba(12, 25, 42, 0.88);
+      --line: #89b8de;
+      --safe: #32b36b;
+      --warn: #f2a93b;
+      --danger: #d04a43;
+      --text: #ecf5ff;
+      --muted: #b9ccde;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(145deg, var(--bg1), #173955 48%, var(--bg2));
+      display: grid;
+      place-items: center;
+      padding: 14px;
+    }
+
+    .game {
+      width: min(1100px, 100%);
+      border: 1px solid #5f8eb4;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 55px rgba(0,0,0,.45);
+      background: #102439;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 2px solid #3d6f95;
+      background: linear-gradient(180deg, #1b3550, #152a3f);
+      font-weight: 700;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: clamp(1rem, 2.2vw, 1.45rem);
+    }
+
+    .brand .badge {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      border: 1px solid #7ea7cb;
+      background: linear-gradient(140deg, #ea583c, #8a2430);
+      font-size: .95rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: clamp(.95rem, 2.1vw, 1.3rem);
+    }
+
+    .stat { white-space: nowrap; }
+    .stat strong { color: #ffd58c; }
+
+    .scene {
+      position: relative;
+      min-height: min(56vh, 660px);
+      isolation: isolate;
+      overflow: hidden;
+      background: linear-gradient(180deg, #77c0ef 0%, #4ea2dc 40%, #3a8bc0 40%, #2f7ab0 58%, #2a6183 58%);
+    }
+
+    .poly {
+      position: absolute;
+      filter: saturate(1.05);
+      z-index: 1;
+    }
+
+    .ship {
+      width: 72%;
+      height: 60%;
+      left: 2%;
+      top: 12%;
+      background: linear-gradient(180deg, #f6fbff, #d9e8f2);
+      clip-path: polygon(0 45%, 12% 44%, 90% 42%, 99% 54%, 81% 70%, 8% 72%, 0 58%);
+      border: 1px solid #8ea7bb;
+    }
+
+    .hull {
+      width: 76%;
+      height: 23%;
+      left: 0;
+      top: 44%;
+      background: linear-gradient(180deg, #224f78, #173550);
+      clip-path: polygon(0 28%, 70% 20%, 96% 31%, 100% 52%, 89% 68%, 0 86%);
+      z-index: 2;
+    }
+
+    .ramp {
+      width: 33%;
+      height: 30%;
+      right: 12%;
+      top: 44%;
+      background: linear-gradient(180deg, #ec8f48, #c76431);
+      clip-path: polygon(8% 0, 100% 0, 93% 100%, 0 90%);
+      z-index: 3;
+    }
+
+    .dock {
+      width: 48%;
+      height: 26%;
+      left: 0;
+      bottom: 0;
+      background: linear-gradient(165deg, #939fa8, #727d86);
+      clip-path: polygon(0 15%, 100% 2%, 100% 100%, 0 100%);
+      z-index: 2;
+    }
+
+    .ops {
+      width: 14%;
+      height: 37%;
+      right: 8%;
+      bottom: 13%;
+      background: linear-gradient(180deg, #f6d28b, #8f6133 42%, #334f79 42%, #1d3253);
+      clip-path: polygon(44% 0, 61% 0, 74% 20%, 75% 68%, 85% 96%, 15% 96%, 25% 68%, 26% 20%);
+      z-index: 5;
+    }
+
+    .master {
+      width: 10%;
+      height: 29%;
+      right: 21%;
+      bottom: 16%;
+      background: linear-gradient(180deg, #ecb77f, #835531 42%, #58647b 42%, #2f3c53);
+      clip-path: polygon(42% 0, 60% 0, 72% 20%, 73% 68%, 84% 95%, 16% 95%, 26% 68%, 27% 20%);
+      z-index: 4;
+      opacity: .95;
+    }
+
+    .ev {
+      width: 16%;
+      height: 16%;
+      right: 29%;
+      top: 56%;
+      background: linear-gradient(145deg, #fefefe, #cbd7e2);
+      clip-path: polygon(6% 65%, 14% 45%, 35% 28%, 70% 26%, 91% 45%, 95% 61%, 85% 76%, 14% 78%);
+      border: 1px solid #768fa5;
+      z-index: 6;
+    }
+
+    .queue {
+      width: 14%;
+      height: 14%;
+      right: 8%;
+      top: 56%;
+      background: linear-gradient(145deg, #fefefe, #c5d3df);
+      clip-path: polygon(6% 65%, 14% 45%, 35% 28%, 70% 26%, 91% 45%, 95% 61%, 85% 76%, 14% 78%);
+      border: 1px solid #7b94a9;
+      z-index: 5;
+      opacity: .95;
+    }
+
+    .bubble {
+      position: absolute;
+      left: 5%;
+      top: 17%;
+      max-width: min(68ch, 60%);
+      padding: 16px 18px;
+      border-radius: 16px;
+      border: 2px solid #b6d6f2;
+      background: var(--panel);
+      z-index: 10;
+      box-shadow: 0 10px 20px rgba(0,0,0,.26);
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      line-height: 1.35;
+      white-space: pre-line;
+    }
+
+    .bubble::after {
+      content: "";
+      position: absolute;
+      left: 30px;
+      bottom: -17px;
+      border: 10px solid transparent;
+      border-top-color: #b6d6f2;
+    }
+
+    .bubble::before {
+      content: "";
+      position: absolute;
+      left: 31px;
+      bottom: -13px;
+      border: 9px solid transparent;
+      border-top-color: var(--panel);
+      z-index: 1;
+    }
+
+    .ui {
+      padding: 14px;
+      border-top: 1px solid #4b7395;
+      background: #13273d;
+    }
+
+    .scene-meta {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button.option {
+      border: 2px solid #9ec4e4;
+      background: linear-gradient(180deg, #21476d, #173350);
+      color: #f3fbff;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 76px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform .15s ease, filter .15s ease;
+      font-weight: 700;
+    }
+
+    button.option:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+
+    .custom {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 11px 12px;
+      border-radius: 8px;
+      border: 1px solid #7ea4c5;
+      background: #0f2235;
+      color: #e8f6ff;
+      font-size: 1rem;
+    }
+
+    .custom button {
+      border-radius: 8px;
+      border: 1px solid #7ea4c5;
+      background: #274c6e;
+      color: #ecf6ff;
+      padding: 0 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .feedback {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #7ea4c5;
+      background: rgba(8, 20, 35, 0.82);
+      display: none;
+    }
+
+    .feedback.show { display: block; }
+    .feedback h3 { margin: 0 0 8px; }
+
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin-right: 8px;
+      font-size: .85rem;
+      border: 1px solid;
+    }
+
+    .safe { border-color: #66d399; color: #66d399; }
+    .partial { border-color: #f5cc74; color: #f5cc74; }
+    .unsafe { border-color: #f38b84; color: #f38b84; }
+
+    .next {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #9ec4e4;
+      background: #21496d;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .end {
+      text-align: center;
+      padding: 22px 16px;
+    }
+
+    @media (max-width: 860px) {
+      .options { grid-template-columns: 1fr; }
+      .bubble { max-width: 90%; font-size: 1rem; }
+      .scene { min-height: 48vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <header class="hud">
+      <div class="brand"><span class="badge">RC</span> Ro-Ro Commander: EV Crisis</div>
+      <div class="stats">
+        <div class="stat">🛡️ Ship Safety: <strong id="safety">100</strong></div>
+        <div class="stat">⏱️ Time: <strong id="time">100</strong></div>
+      </div>
+    </header>
+
+    <section class="scene" id="sceneVisual">
+      <div class="poly ship"></div>
+      <div class="poly hull"></div>
+      <div class="poly ramp"></div>
+      <div class="poly dock"></div>
+      <div class="poly master"></div>
+      <div class="poly ops"></div>
+      <div class="poly ev"></div>
+      <div class="poly queue"></div>
+      <div class="bubble" id="sceneText"></div>
+    </section>
+
+    <section class="ui" id="ui"></section>
+  </main>
+
+  <script>
+    const scenes = [
+      {
+        id: "INTRO-1",
+        title: "INTRO SCREEN – Ro-Ro Commander: EV Crisis",
+        text: "You are the Cargo Operations Officer on a fully booked car carrier. Today’s voyage has an unusually high number of EVs and alternative fuel vehicles.\n\nThe Master is clear: \"We follow the EV rules, no shortcuts.\"\n\nHow do you begin this shift?",
+        options: [
+          {
+            label: "A) Review EV/AFV checklist + fire plan before loading.",
+            verdict: "Safe",
+            class: "safe",
+            eval: "You anchor yourself in EV/AFV procedures, fixed system strategy, and SoC/stowage rules before pressure starts.",
+            consequence: "You and the Master quickly walk through the checklist; you’re aligned on ‘when in doubt, refuse.’",
+            safety: 5,
+            time: -5
+          },
+          {
+            label: "B) Go straight to the ramp to save time.",
+            verdict: "Partially safe",
+            class: "partial",
+            eval: "You are present on the ramp, but relying on memory and habits from ICE cargo can miss EV-specific checks.",
+            consequence: "You’re visible on deck, but reacting on the fly instead of from a clear plan.",
+            safety: 0,
+            time: 0
+          },
+          {
+            label: "C) Stay in office and let terminal staff handle loading.",
+            verdict: "Unsafe",
+            class: "unsafe",
+            eval: "You hand control of EV acceptance and stowage to people who may not know your ship’s procedures.",
+            consequence: "Terminal staff start making EV placement decisions without you; misunderstandings appear quickly.",
+            safety: -10,
+            time: 5
+          }
+        ]
+      },
+      {
+        id: "S1-1",
+        title: "STAGE 1 – Damaged EV at the Dock",
+        text: "Loading is in full swing. A terminal supervisor says: \"One last EV. It scraped the underside on the way here, but it's fine.\"\n\nPhotos show deformation close to the battery area, with no formal clearance.",
+        options: [
+          {
+            label: "A) Accept it and stow in EV zone; monitor it.",
+            verdict: "Unsafe",
+            class: "unsafe",
+            eval: "A possibly damaged battery means higher risk of thermal runaway in an enclosed deck.",
+            consequence: "The EV joins the load; you’ve added a silent risk that could surface mid-voyage.",
+            safety: -20,
+            time: 0,
+            flags: ["damaged_ev_accepted"]
+          },
+          {
+            label: "B) Refuse unless battery removed or formally cleared ashore.",
+            verdict: "Safe",
+            class: "safe",
+            eval: "You apply ‘when in doubt, refuse’ and keep a suspect EV out until competent inspection clears it.",
+            consequence: "Pushback from terminal, but refusal is documented and backed by the Master.",
+            safety: 5,
+            time: -5
+          },
+          {
+            label: "C) Accept it near crew access door for easier checks.",
+            verdict: "Unsafe",
+            class: "unsafe",
+            eval: "You accept a suspect EV and place it by a key escape route, increasing crew exposure.",
+            consequence: "If something fails, evacuation and firefighting routes are compromised.",
+            safety: -25,
+            time: 0,
+            flags: ["damaged_ev_accepted", "critical_route_exposed"]
+          }
+        ]
+      },
+      {
+        id: "S1-2",
+        title: "STAGE 1 – SoC Check Conflict",
+        text: "Paperwork states SoC 40%, but dashboard clearly shows about 80%. Stevedores wave to clear it because schedule is slipping.",
+        options: [
+          {
+            label: "A) Trust paperwork and load as planned.",
+            verdict: "Unsafe",
+            class: "unsafe",
+            eval: "A clear discrepancy is a red flag. Ignoring it undermines SoC control.",
+            consequence: "EV is loaded with unknown SoC, weakening risk controls.",
+            safety: -15,
+            time: 0,
+            flags: ["soc_noncompliant"]
+          },
+          {
+            label: "B) Stop, verify SoC per procedure, demand correction/proof.",
+            verdict: "Safe",
+            class: "safe",
+            eval: "You treat SoC as a critical barrier and accept delay to reduce risk.",
+            consequence: "Unit is held until corrected or refused; loading adjusts with confidence.",
+            safety: 5,
+            time: -10
+          },
+          {
+            label: "C) Ask driver to turn it off and load anyway.",
+            verdict: "Unsafe",
+            class: "unsafe",
+            eval: "Powering down does not reduce SoC or battery energy.",
+            consequence: "The unexplained high charge remains and chance to correct is lost.",
+            safety: -15,
+            time: 0,
+            flags: ["soc_noncompliant"]
+          }
+        ]
+      },
+      {
+        id: "S1-3",
+        title: "STAGE 1 – Stowage / Spacing Decision",
+        text: "EV rows are filling. Planner suggests tighter packing like ICE cars to fit extra units. You know access and spacing matter if an incident occurs.",
+        options: [
+          { label: "A) Pack EVs tight for maximum capacity.", verdict: "Unsafe", class: "unsafe", eval: "Tight packing makes cooling boundaries and access extremely difficult.", consequence: "Extra capacity achieved, but containment is much harder.", safety: -15, time: 5, flags:["packed_ev_rows"] },
+          { label: "B) Keep increased spacing and designated EV areas.", verdict: "Safe", class: "safe", eval: "You trade small commercial loss for better control options.", consequence: "Deck remains orderly with clear lanes and gaps.", safety: 10, time: -5 },
+          { label: "C) Scatter EVs randomly across decks.", verdict: "Partially safe", class: "partial", eval: "Risk is spread but monitoring/response gets messy and inconsistent.", consequence: "EV risk is fragmented and harder to manage.", safety: -5, time: 0, flags:["evs_scattered"] }
+        ]
+      },
+      {
+        id: "S1-4",
+        title: "STAGE 1 – Monitoring Readiness Before Sailing",
+        text: "Departure is close. Pilot is onboard. Bridge asks if you’re ready to sail while EV deck checks still need confirmation.",
+        options: [
+          { label: "A) Skip detector/CCTV checks to avoid delay.", verdict: "Unsafe", class: "unsafe", eval: "You sail without confirming early-warning systems.", consequence: "Any blind area/fault is discovered only after escalation.", safety: -20, time: 5, flags:["monitoring_compromised"] },
+          { label: "B) Confirm detectors/CCTV/gas + brief patrols and thermal camera.", verdict: "Safe", class: "safe", eval: "You combine technical monitoring with human patrol readiness.", consequence: "Slight delay but stronger early-warning capability.", safety: 10, time: -10, flags:["voyage_monitoring_strong"] },
+          { label: "C) Rely only on smell/visual rounds.", verdict: "Unsafe", class: "unsafe", eval: "You discard key layers of defense in a large space.", consequence: "Critical systems remain unverified.", safety: -15, time: 5, flags:["monitoring_compromised"] }
+        ]
+      },
+      {
+        id: "S2-1",
+        title: "STAGE 2 – White Vapor on CCTV",
+        text: "Mid-voyage, CCTV shows wispy white vapor around one EV row. No flame yet. AB says it may be condensation.",
+        options: [
+          { label: "A) Assume condensation and continue routine.", verdict: "Unsafe", class: "unsafe", eval: "This can be an early venting sign; delay wastes precious response time.", consequence: "Vapor thickens until conditions worsen.", safety: -20, time: 5, flags:["early_indicator_ignored"] },
+          { label: "B) Treat as venting; investigate with thermal imaging + gas awareness.", verdict: "Safe", class: "safe", eval: "Controlled early investigation gives options before full fire develops.", consequence: "Abnormal hotspot confirmed early with more control.", safety: 10, time: -5, flags:["early_indicator_handled"] },
+          { label: "C) Vent fully and send unprotected crew for quick look.", verdict: "Unsafe", class: "unsafe", eval: "You may spread gases and expose crew to toxic vapors.", consequence: "Crew is irritated and retreats without good data.", safety: -15, time: 0, flags:["toxic_exposure"] }
+        ]
+      },
+      {
+        id: "S2-2",
+        title: "STAGE 2 – Localized Hot Spot",
+        text: "Thermal patrol reports a localized hotspot under a low-clearance EV. No open flame, but it is much hotter than others.",
+        options: [
+          { label: "A) Give a quick portable extinguisher burst.", verdict: "Unsafe / ineffective", class: "unsafe", eval: "Brief spray does not solve battery thermal instability.", consequence: "Surface cools briefly, then temperatures rise again.", safety: -15, time: -5, flags:["fire_escalated"] },
+          { label: "B) Isolate, cool, monitor, prepare fixed system.", verdict: "Safe", class: "safe", eval: "You treat it as a serious precursor and prepare escalation control.", consequence: "Boundaries and standby fixed-system readiness are established.", safety: 10, time: -10, flags:["prepped_for_fixed_system"] },
+          { label: "C) Move EV to another deck.", verdict: "Unsafe", class: "unsafe", eval: "Movement can shock the battery and spread hazard.", consequence: "Temperature spikes and risk shifts to another deck.", safety: -20, time: -10, flags:["fire_escalated","hazard_moved"] }
+        ]
+      },
+      {
+        id: "S2-3",
+        title: "STAGE 2 – Onboard Charging Request",
+        text: "Terminal asks if a near-empty EV can be charged onboard now so it can drive off at next port.",
+        options: [
+          { label: "A) Approve ad-hoc charging with available equipment.", verdict: "Unsafe", class: "unsafe", eval: "Unchecked charging setups add ignition and fault risks.", consequence: "Borrowed-cable charging starts with weak controls.", safety: -15, time: 0, flags:["unsafe_charging"] },
+          { label: "B) Allow only strict exception controls with formal approval.", verdict: "Safe", class: "safe", eval: "Charging is treated as special operation with documented risk controls.", consequence: "Either tightly controlled charging occurs or it is refused safely.", safety: 5, time: -10, flags:["charging_under_control"] },
+          { label: "C) Refuse charging and drag/push aggressively.", verdict: "Unsafe", class: "unsafe", eval: "Aggressive movement risks underfloor and battery damage.", consequence: "Time gained at cost of hidden damage risk.", safety: -10, time: -5, flags:["possible_battery_damage"] }
+        ]
+      },
+      {
+        id: "S3-1",
+        title: "STAGE 3 – Fire Confirmed",
+        text: "Alarms sound. CCTV shows dense smoke and flickering light in a packed EV row. Master asks: ‘We have a developed fire. What’s your call?’",
+        options: [
+          { label: "A) Delay fixed system until exact vehicle is identified.", verdict: "Unsafe", class: "unsafe", eval: "Waiting in developed fire allows heat and toxic gases to build rapidly.", consequence: "Visibility drops and structure is increasingly threatened.", safety: -25, time: -10, flags:["fixed_system_delayed","fire_escalated"] },
+          { label: "B) Activate fixed system promptly + containment strategy.", verdict: "Safe", class: "safe", eval: "Primary response is rapid fixed-system use with boundary and smoke control.", consequence: "Heat growth slows and teams gain control options.", safety: 10, time: -5, flags:["fixed_system_used"] },
+          { label: "C) Send team deep into smoke without SCBA.", verdict: "Very unsafe", class: "unsafe", eval: "Extreme toxic/heat exposure risk and likely casualties.", consequence: "Injured crew complicates a growing fire.", safety: -30, time: -5, flags:["toxic_exposure","crew_injured"] }
+        ]
+      },
+      {
+        id: "S3-2",
+        title: "STAGE 3 – Suspected Toxic Gas Exposure",
+        text: "Boundary team reports eye/throat irritation; one crew member is coughing hard and atmosphere monitor alarms.",
+        options: [
+          { label: "A) Push on without extra PPE.", verdict: "Unsafe", class: "unsafe", eval: "Ignoring toxic-gas indicators can rapidly cause serious injuries.", consequence: "Symptoms worsen and manpower drops.", safety: -25, time: -5, flags:["serious_toxic_exposure"] },
+          { label: "B) Upgrade SCBA/PPE, rotate teams, decon personnel/equipment.", verdict: "Safe", class: "safe", eval: "You treat smoke as toxic and manage exposure systematically.", consequence: "Operations slow but exposure is controlled.", safety: 5, time: -10, flags:["toxic_exposure_managed"] },
+          { label: "C) Open doors/hatches to vent and work closer.", verdict: "Unsafe", class: "unsafe", eval: "Uncontrolled ventilation can spread smoke and feed fire.", consequence: "Containment degrades and routes complicate.", safety: -20, time: -5, flags:["smoke_spread"] }
+        ]
+      },
+      {
+        id: "S3-3",
+        title: "STAGE 3 – Flames Out, Heat Still High",
+        text: "After fixed-system discharge and boundary cooling, visible flames are gone. Thermal readings remain high around one EV and deck beneath.",
+        options: [
+          { label: "A) Declare all clear and stand down.", verdict: "Unsafe", class: "unsafe", eval: "EV batteries can re-ignite hours after visible fire ends.", consequence: "Hotspots later intensify and smoke returns.", safety: -25, time: 5, flags:["reignition_risk_high","reignition_occurred"] },
+          { label: "B) Keep post-fire watch, cooling, and re-ignition monitoring.", verdict: "Safe", class: "safe", eval: "You maintain vigilance until temperatures trend down and stabilize.", consequence: "Flare-ups are caught and controlled early.", safety: 10, time: -10, flags:["reignition_risk_managed"] },
+          { label: "C) Cover EV with blankets and close ventilation.", verdict: "Unsafe", class: "unsafe", eval: "You may trap heat/gases and hinder monitoring.", consequence: "Sudden flare-up risk increases.", safety: -15, time: -5, flags:["reignition_risk_high"] }
+        ]
+      },
+      {
+        id: "S3-4",
+        title: "STAGE 3 – Command Strategy",
+        text: "Fire is largely controlled but hotspots remain in low visibility. Master asks whether to push aggressive entry or continue controlled containment.",
+        options: [
+          { label: "A) Aggressive deep entry without clear smoke/exit strategy.", verdict: "Unsafe", class: "unsafe", eval: "Disorientation, entrapment, and toxic exposure risks increase sharply.", consequence: "Retreats are disorganized and injuries become likely.", safety: -20, time: -10, flags:["aggressive_entry"] },
+          { label: "B) Maintain containment, cooling, smoke management, controlled entries.", verdict: "Safe", class: "safe", eval: "Disciplined containment protects crews and preserves control.", consequence: "Heat gradually decreases; no crew lost in-space.", safety: 10, time: -5, flags:["containment_strategy"] },
+          { label: "C) Randomly flood deck with changing tactics.", verdict: "Ineffective and risky", class: "unsafe", eval: "Constant tactic shifts waste agents and confuse teams.", consequence: "Fatigue rises with little control gain.", safety: -15, time: -10, flags:["tactics_confused"] }
+        ]
+      }
+    ];
+
+    const state = {
+      index: 0,
+      safety: 100,
+      time: 100,
+      flags: []
+    };
+
+    const ui = document.getElementById('ui');
+    const sceneText = document.getElementById('sceneText');
+    const safetyEl = document.getElementById('safety');
+    const timeEl = document.getElementById('time');
+
+    function clampStats() {
+      state.safety = Math.max(0, Math.min(130, state.safety));
+      state.time = Math.max(0, Math.min(130, state.time));
+    }
+
+    function updateHUD() {
+      safetyEl.textContent = state.safety;
+      timeEl.textContent = state.time;
+    }
+
+    function renderScene() {
+      if (state.index >= scenes.length) {
+        endGame();
+        return;
+      }
+
+      const scene = scenes[state.index];
+      sceneText.textContent = scene.text;
+
+      ui.innerHTML = `
+        <div class="scene-meta">
+          <div><strong>${scene.id}</strong> — ${scene.title}</div>
+          <div>[Ship Safety: ${state.safety}] [Time: ${state.time}]</div>
+        </div>
+        <div class="options"></div>
+        <div class="custom">
+          <input type="text" id="customAction" placeholder="Or type your own action" />
+          <button id="customBtn">Submit</button>
+        </div>
+        <div class="feedback" id="feedback"></div>
+      `;
+
+      const optionsWrap = ui.querySelector('.options');
+      scene.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option';
+        btn.textContent = opt.label;
+        btn.onclick = () => resolveOption(idx);
+        optionsWrap.appendChild(btn);
+      });
+
+      ui.querySelector('#customBtn').onclick = () => {
+        const text = ui.querySelector('#customAction').value.trim();
+        if (!text) return;
+        resolveCustom(text);
+      };
+    }
+
+    function resolveCustom(text) {
+      const lc = text.toLowerCase();
+      const scene = scenes[state.index];
+
+      let pick = 1;
+      if (/(skip|ignore|fast|trust|office|tight|aggressive|no ppe|delay)/.test(lc)) pick = 0;
+      if (/(refuse|verify|check|brief|isolate|contain|scba|monitor|cool|approval)/.test(lc)) pick = 1;
+      if (/(random|scatter|drag|push|unprotected|vent fully)/.test(lc)) pick = 2;
+
+      showFeedback(scene.options[pick], `Custom action interpreted as: "${text}"`);
+    }
+
+    function resolveOption(idx) {
+      const scene = scenes[state.index];
+      const option = scene.options[idx];
+      showFeedback(option);
+    }
+
+    function showFeedback(option, customLead = "") {
+      state.safety += option.safety;
+      state.time += option.time;
+      (option.flags || []).forEach(flag => {
+        if (!state.flags.includes(flag)) state.flags.push(flag);
+      });
+      clampStats();
+      updateHUD();
+
+      const f = ui.querySelector('#feedback');
+      f.classList.add('show');
+
+      const safetyDelta = option.safety >= 0 ? `+${option.safety}` : `${option.safety}`;
+      const timeDelta = option.time >= 0 ? `+${option.time}` : `${option.time}`;
+
+      f.innerHTML = `
+        <h3><span class="tag ${option.class}">${option.verdict}</span>Decision feedback</h3>
+        ${customLead ? `<p><em>${customLead}</em></p>` : ""}
+        <p>${option.eval}</p>
+        <p><strong>Consequence:</strong> ${option.consequence}</p>
+        <p><strong>Stat changes:</strong> Ship Safety ${safetyDelta}, Time ${timeDelta}</p>
+        <button class="next" id="nextBtn">Continue</button>
+      `;
+
+      ui.querySelectorAll('.option').forEach(btn => btn.disabled = true);
+      ui.querySelector('#customBtn').disabled = true;
+      ui.querySelector('#customAction').disabled = true;
+
+      document.getElementById('nextBtn').onclick = () => {
+        state.index += 1;
+        renderScene();
+      };
+    }
+
+    function endGame() {
+      const safeRank = state.safety >= 110 ? 'Excellent command discipline' : state.safety >= 85 ? 'Mixed safety outcome' : 'High-risk voyage outcome';
+      const issues = state.flags.length ? state.flags.join(', ') : 'No critical risk flags triggered.';
+      sceneText.textContent = "Debrief complete. Voyage scenario finished.";
+      ui.innerHTML = `
+        <div class="end">
+          <h2>End of Scenario</h2>
+          <p><strong>Final Ship Safety:</strong> ${state.safety} | <strong>Final Time:</strong> ${state.time}</p>
+          <p><strong>Assessment:</strong> ${safeRank}</p>
+          <p><strong>Flags:</strong> ${issues}</p>
+          <button class="next" onclick="location.reload()">Play Again</button>
+        </div>
+      `;
+    }
+
+    updateHUD();
+    renderScene();
+  </script>
+</body>
+</html>
